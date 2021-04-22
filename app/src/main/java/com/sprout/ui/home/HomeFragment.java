@@ -3,11 +3,13 @@ package com.sprout.ui.home;
 import android.content.Intent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.alibaba.android.vlayout.DelegateAdapter;
 import com.alibaba.android.vlayout.VirtualLayoutManager;
+import com.google.zxing.activity.CaptureActivity;
 import com.sprout.R;
 import com.sprout.app.Constants;
 import com.sprout.base.BaseFragment;
@@ -22,10 +24,12 @@ import java.util.List;
 
 import butterknife.BindView;
 
-public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome.View {
+public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome.View, View.OnClickListener {
 
     @BindView(R.id.recyclerview)
     RecyclerView recyclerView;
+    @BindView(R.id.img_scan)
+    ImageView imgScan;
 
     VirtualLayoutManager virtualLayoutManager;
     RecyclerView.RecycledViewPool viewPool;
@@ -52,8 +56,9 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
     String brandTitle_eleven = "";
     String brandTitle_twelve = "";
 
-
-//    TitleAdapter titleAdapter;
+    //上下轮番广告ViewFlipper
+    List<String> flipperList;
+    FlipperAdapter flipperAdapter;
 
     List<HomeBean.DataBean.BrandListBean> brands;
     BrandAdapter brandAdapter;
@@ -63,10 +68,10 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
     ArrayList<HomeBean.DataBean.CategoryListBean> categoryListBeans;
     ArrayList<HomeBean.DataBean.TopicListBean> topicListBeans;
     ArrayList<HomeBean.DataBean.TopicListBean> topicListBeans1;
-     RecyCategoryAdapter recyCategoryAdapter;
-     RecyTopicAdapter recyTopicAdapter;
-     ArrayList<HomeBean.DataBean.HotGoodsListBean> hotGoodsListBeans;
-    private HotGoodsListAdapter hotGoodsListAdapter;
+    RecyCategoryAdapter recyCategoryAdapter;
+    RecyTopicAdapter recyTopicAdapter;
+    ArrayList<HomeBean.DataBean.HotGoodsListBean> hotGoodsListBeans;
+    HotGoodsListAdapter hotGoodsListAdapter;
 
 
     public static HomeFragment getInstance() {
@@ -80,6 +85,9 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
 
     @Override
     public void initView() {
+
+        imgScan.setOnClickListener(this);
+
         virtualLayoutManager = new VirtualLayoutManager(mContext);
         recyclerView.setLayoutManager(virtualLayoutManager);
         viewPool = new RecyclerView.RecycledViewPool();
@@ -96,6 +104,13 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
         channels = new ArrayList<>();
         channelAdapter = new ChannelAdapter(mContext, channels);
         delegateAdapter.addAdapter(channelAdapter);
+
+        flipperList = new ArrayList<>();
+        flipperList.add("这是头条新闻");
+        flipperList.add("这是普通新闻");
+        flipperList.add("这是腾讯新闻");
+        flipperAdapter = new FlipperAdapter(mContext,flipperList);
+        delegateAdapter.addAdapter(flipperAdapter);
 
         brandTitle = "品牌制造商直供";
         TitleAdapter titleAdapter_one = new TitleAdapter(mContext, brandTitle);
@@ -124,14 +139,13 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
         categoryAdapter.setListener(new CategoryAdapter.OnItemClickListener() {
             @Override
             public void onClick(View v) {
-                int pos = (int)v.getTag();
+                int pos = (int) v.getTag();
                 HomeBean.DataBean.NewGoodsListBean bean = categoryLists.get(pos);
                 Intent intent = new Intent(mContext, GoodDetailActivity.class);
-                intent.putExtra("goodid",bean.getId());
+                intent.putExtra("goodid", bean.getId());
                 startActivityForResult(intent, Constants.PAGE_REQEST_CODE_GOODDETAIL);
             }
         });
-
 
 
         brandTitle_two = "人气推荐";
@@ -140,15 +154,15 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
         titleAdapter_three.notifyDataSetChanged();
 
         hotGoodsListBeans = new ArrayList<>();
-        hotGoodsListAdapter = new HotGoodsListAdapter(mContext,hotGoodsListBeans);
+        hotGoodsListAdapter = new HotGoodsListAdapter(mContext, hotGoodsListBeans);
         delegateAdapter.addAdapter(hotGoodsListAdapter);
         hotGoodsListAdapter.setListener(new CategoryAdapter.OnItemClickListener() {
             @Override
             public void onClick(View v) {
-                int pos = (int)v.getTag();
+                int pos = (int) v.getTag();
                 HomeBean.DataBean.HotGoodsListBean bean = hotGoodsListBeans.get(pos);
                 Intent intent = new Intent(mContext, GoodDetailActivity.class);
-                intent.putExtra("goodid",bean.getId());
+                intent.putExtra("goodid", bean.getId());
                 startActivityForResult(intent, Constants.PAGE_REQEST_CODE_GOODDETAIL);
             }
         });
@@ -169,12 +183,10 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
         titleAdapter_five.notifyDataSetChanged();
 
 
-
         brandTitle_five = "餐厨";
         TitleAdapter titleAdapter_6 = new TitleAdapter(mContext, brandTitle_five);
         delegateAdapter.addAdapter(titleAdapter_6);
         titleAdapter_6.notifyDataSetChanged();
-
 
 
         brandTitle_six = "饮食";
@@ -240,6 +252,7 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
             channelAdapter.notifyDataSetChanged();
 
 
+
             brands.clear();
             brands.addAll(result.getData().getBrandList());
             brandAdapter.notifyDataSetChanged();
@@ -247,7 +260,6 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
             categoryLists.clear();
             categoryLists.addAll(result.getData().getNewGoodsList());
             categoryAdapter.notifyDataSetChanged();
-
 
 
             topicListBeans.clear();
@@ -259,9 +271,24 @@ public class HomeFragment extends BaseFragment<IHome.Presenter> implements IHome
             hotGoodsListAdapter.notifyDataSetChanged();
 
 
-
         }
     }
 
 
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.img_scan:
+                openScan();
+                break;
+        }
+    }
+
+    /**
+     * 打开扫描页面
+     */
+    private void openScan(){
+        Intent intent = new Intent(mContext, CaptureActivity.class);
+        startActivityForResult(intent,Constants.PAGE_SCAN_CODE);
+    }
 }
